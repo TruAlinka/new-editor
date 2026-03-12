@@ -2,296 +2,90 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>Интерактивный диктант — редактор заданий</title>
-  <meta name="viewport" content="width=400,initial-scale=1">
+  <title>Настройка интерактивного задания</title>
   <style>
-    body {
-      font-family: 'Segoe UI', Arial, sans-serif;
-      margin: 0;
-      background: #f2f4fa;
-      padding: 0;
-    }
-    #container {
-      max-width: 430px;
-      min-width: 300px;
-      background: #fff;
-      margin: 30px auto;
-      border-radius: 14px;
-      box-shadow: 0 4px 28px rgba(88,91,99,.13);
-      padding: 30px 32px 24px 32px;
-    }
-    h2, h3 {
-      text-align: center;
-      margin-top: 0;
-      font-weight: 600;
-      letter-spacing: 0.5px;
-    }
-    .lang-switch {
-      display: flex;
-      justify-content: flex-end;
-      margin-bottom: 4px;
-    }
-    .lang-switch button {
-      background: #f2f4fa;
-      color: #505e6b;
-      border: none;
-      border-radius: 16px;
-      padding: 6px 13px;
-      margin-left: 6px;
-      font-weight: bold;
-      cursor: pointer;
-      font-size: 15px;
-      transition: background 0.25s;
-    }
-    .lang-switch .active {
-      background: #4876fa;
-      color: #fff;
-    }
-    form label {
-      font-size: 14px;
-      font-weight: 500;
-      color: #4e5058;
-    }
-    input, select, textarea {
-      width: 100%;
-      background: #f9fbfd;
-      border: 1px solid #d5d8e0;
-      border-radius: 7px;
-      padding: 8px;
-      font-size: 15px;
-      margin-bottom: 10px;
-      margin-top: 2px;
-      outline: none;
-      box-sizing: border-box;
-    }
-    input[type="file"]{ background: none; border: none; }
-    button[type="submit"], #clearBtn {
-      background: #4876fa;
-      color: #fff;
-      border: none;
-      border-radius: 7px;
-      padding: 10px 18px;
-      margin-right: 6px;
-      font-size: 15px;
-      cursor: pointer;
-      font-weight: 500;
-      transition: 0.2s;
-    }
-    #clearBtn {
-      background: #f5c16c;
-      color: #424450;
-    }
-    .task {
-      background: #f7fbff;
-      border: 1px solid #e2e6ee;
-      border-radius: 9px;
-      padding: 12px;
-      margin-top: 12px;
-      box-shadow: 0 2px 10px rgba(170,180,225,0.08);
-      position: relative;
-      transition: box-shadow 0.2s;
-    }
-    .task:hover { box-shadow: 0 4px 17px rgba(157,182,236,.12);}
-    .task-header { display: flex; gap: 12px; align-items: center;}
-    .task-index { color: #5577d7; font-weight: bold;}
-    .task-actions button {
-      background: none;
-      color: #4978db;
-      border: none;
-      font-size: 19px;
-      cursor: pointer;
-      margin-right: 10px;
-      transition: color 0.2s;
-    }
-    .task-actions button:hover{ color: #ff7754; }
-    .task img { border-radius:4px;max-width:50px;border:1px solid #e3e5ec;}
-    #action-bar {
-      display: flex; gap:8px; margin-top: 14px; justify-content: space-between; align-items: center;
-    }
-    #exportBtn{
-      background:#4ed7ab; color: #222; border:none;border-radius:7px;padding:8px 15px; font-weight:600;cursor:pointer;
-    }
-    input[type="file"]{padding:0;}
-    @media (max-width:480px){ #container{ max-width:98vw; padding:10px; } }
+    body { font-family: Arial; display:flex; flex-direction:column; align-items:center; background:#f5f7fa; }
+    #wrapper { background:#fff; border-radius:12px; margin:40px 0 0 0; box-shadow:0 6px 32px #aac5fa44; padding:25px; width:500px; }
+    #editor label { font-weight:600; display:block; margin-top:15px; }
+    #editor input, #editor textarea { width:100%; padding:7px; border:1px solid #c9d4ed; border-radius:7px; }
+    #previewbox { background: #eff4fc; padding:14px 10px; margin:new 20px 0 0 0; border-radius:7px;}
+    iframe { width:100%; height:230px; border:2px solid #8caae6; border-radius:8px; background:#fff;}
+    #iframecode { width:100%; background:#f0f3fc; color:#3a2d7d; border:none; padding:6px; font-family:monospace; }
   </style>
 </head>
 <body>
-<div id="container">
-  <div class="lang-switch">
-    <button id="langRu" class="active" onclick="setLang('ru')" type="button">РУССКИЙ</button>
-    <button id="langEn" onclick="setLang('en')" type="button">ENGLISH</button>
-  </div>
-  <h2 id="title">Редактор заданий</h2>
-  <form id="taskForm">
-    <label id="imgLabel">Ссылка на картинку:
-      <input type="text" id="img" autocomplete="off" required placeholder="https://...">
+<div id="wrapper">
+  <h2>Редактор интерактивного диктанта</h2>
+  <form id="editor" oninput="updatePreview()">
+    <label>Дефиниция:<br>
+      <textarea id="definition" rows="2" required placeholder="Напишите определение..."></textarea>
     </label>
-    <label id="defLabel">Дефиниция (опционально):
-      <textarea id="def"></textarea>
+    <label>Ответ (слово):<br>
+      <input type="text" id="answer" required placeholder="Ответ">
     </label>
-    <label id="answerLabel">Слово-ответ:
-      <input type="text" id="answer" autocomplete="off" required>
+    <label>Фото (опционально):<br>
+      <input type="text" id="imgurl" placeholder="URL-картинки, можно пусто">
     </label>
-    <label id="typeLabel">Тип задания:
-      <select id="type">
-        <option value="order" id="typeOrder">Расставить буквы</option>
-        <option value="input" id="typeInput">Впечатать слово</option>
-      </select>
+    <label>Внешний вид (фон):<br>
+      <input type="color" id="bgcolor" value="#f7faff">
     </label>
-    <button id="submitBtn" type="submit">Добавить задание</button>
-    <button id="clearBtn" type="button" onclick="clearForm()">Очистить</button>
   </form>
-  <hr>
-  <h3 id="tasksTitle">Текущие задания:</h3>
-  <div id="tasks"></div>
-  <div id="action-bar">
-    <button id="exportBtn" onclick="downloadJSON()">Выгрузить</button>
-    <label style="font-size:13px;">
-      <input id="fileInput" type="file" accept="application/json" onchange="loadJSON(event)">
-      <span id="importLbl">Загрузить</span>
-    </label>
+  <div id="previewbox">
+    <b>Превью задания:</b>
+    <iframe id="gameframe"></iframe>
   </div>
+  <label style="margin-top:16px;">Код для вставки в Genially (iframe):
+    <input id="iframecode" readonly>
+  </label>
 </div>
 
 <script>
-const dict = {
-  ru: {
-    title: "Редактор заданий",
-    img: "Ссылка на картинку:",
-    def: "Дефиниция (опционально):",
-    answer: "Слово-ответ:",
-    type: "Тип задания:",
-    typeOrder: "Расставить буквы",
-    typeInput: "Впечатать слово",
-    submit: "Добавить задание",
-    clear: "Очистить",
-    tasks: "Текущие задания:",
-    edit: "✏️ Редактировать",
-    delete: "🗑️ Удалить",
-    download: "Выгрузить",
-    import: "Загрузить",
-    confirmDel: "Удалить задание?",
-  },
-  en: {
-    title: "Quiz Task Editor",
-    img: "Image URL:",
-    def: "Definition (optional):",
-    answer: "Answer word:",
-    type: "Task type:",
-    typeOrder: "Arrange letters",
-    typeInput: "Type the word",
-    submit: "Add task",
-    clear: "Clear",
-    tasks: "Current tasks:",
-    edit: "✏️ Edit",
-    delete: "🗑️ Delete",
-    download: "Export",
-    import: "Import",
-    confirmDel: "Delete this task?",
-  }
-};
-let lang = "ru";
-function setLang(l) {
-  lang = l;
-  document.getElementById("langRu").classList.toggle("active", lang=="ru");
-  document.getElementById("langEn").classList.toggle("active", lang=="en");
-  const d = dict[lang];
-  document.getElementById("title").innerText = d.title;
-  document.getElementById("imgLabel").innerText = d.img;
-  document.getElementById("defLabel").innerText = d.def;
-  document.getElementById("answerLabel").innerText = d.answer;
-  document.getElementById("typeLabel").innerText = d.type;
-  document.getElementById("typeOrder").innerText = d.typeOrder;
-  document.getElementById("typeInput").innerText = d.typeInput;
-  document.getElementById("submitBtn").innerText = d.submit;
-  document.getElementById("clearBtn").innerText = d.clear;
-  document.getElementById("tasksTitle").innerText = d.tasks;
-  document.getElementById("exportBtn").innerText = d.download;
-  document.getElementById("importLbl").innerText = d.import;
-  renderTasks();
+function escapeHTML(s) {
+  return s.replace(/[<>"']/g, ch => ({
+    '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+  })[ch]);
 }
-let tasks = [];
-let editingIndex = null;
-function renderTasks() {
-  const tasksDiv = document.getElementById('tasks');
-  tasksDiv.innerHTML = '';
-  const d = dict[lang];
-  tasks.forEach((t, i) => {
-    tasksDiv.innerHTML += `
-      <div class="task">
-        <div class="task-header">
-          <span class="task-index">#${i+1}</span>
-          ${t.img ? `<img src="${t.img}" alt="img" style="vertical-align:middle;">` : ''}
-        </div>
-        <div style="margin-top:6px;"><b>${lang==="ru"?"Дефиниция:":"Definition:"}</b> ${t.def || '<em>'+ (lang==="ru"?"нет":"none") +'</em>'}</div>
-        <div><b>${lang==="ru"?"Ответ:":"Answer:"}</b> <em>${t.answer}</em> (${t.type==="order"?d.typeOrder:d.typeInput})</div>
-        <div class="task-actions">
-          <button onclick="editTask(${i})" title="${d.edit}">${d.edit}</button>
-          <button onclick="deleteTask(${i})" title="${d.delete}">${d.delete}</button>
-        </div>
-      </div>
-    `;
-  });
+
+function genGameHTML(def, ans, img, bgcolor) {
+  return `
+  <html><body style="margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;background:${bgcolor};">
+    ${img ? `<img src="${escapeHTML(img)}" style="max-width:95px;max-height:85px;border-radius:7px;box-shadow:0 3px 9px #0001">` : ''}
+    <div style="margin:10px 0; font-size:20px; color:#26377e">${escapeHTML(def)}</div>
+    <div id="letters"></div>
+    <input id="userin" type="text" autocomplete="off" minlength="1" maxlength="18" style="font-size:18px;padding:4px;width:110px;border-radius:7px; border:1px solid #b3daf6;">
+    <button onclick="check()"
+      style="font-size:15px;padding:4px 8px;margin-left:6px;background:#4ed8b1;color:#26377e;border:none;border-radius:5px;">Проверить</button>
+    <div id="feedback" style="font-size:17px; margin:12px 0 0 0;"></div>
+    <script>
+      const ans = "${escapeHTML(ans)}".trim();
+      function check() {
+        var userin = document.getElementById('userin').value.trim();
+        if (userin.toLowerCase() === ans.toLowerCase()) {
+          document.getElementById('feedback').innerHTML = "✅ Молодец!";
+        } else {
+          document.getElementById('feedback').innerHTML = "";
+        }
+      }
+    <\/script>
+  </body></html>
+  `;
 }
-function clearForm() {
-  document.getElementById('taskForm').reset();
-  editingIndex = null;
-}
-document.getElementById('taskForm').onsubmit = function(e) {
-  e.preventDefault();
-  const img = document.getElementById('img').value.trim();
-  const def = document.getElementById('def').value.trim();
-  const answer = document.getElementById('answer').value.trim();
-  const type = document.getElementById('type').value;
-  const task = { img, def, answer, type };
-  if (editingIndex !== null) {
-    tasks[editingIndex] = task;
-    editingIndex = null;
-  } else {
-    tasks.push(task);
-  }
-  this.reset();
-  renderTasks();
-}
-window.editTask = function(i) {
-  const t = tasks[i];
-  document.getElementById('img').value = t.img;
-  document.getElementById('def').value = t.def;
-  document.getElementById('answer').value = t.answer;
-  document.getElementById('type').value = t.type;
-  editingIndex = i;
-}
-window.deleteTask = function(i) {
-  if (confirm(dict[lang].confirmDel)) {
-    tasks.splice(i, 1);
-    renderTasks();
-  }
-}
-function downloadJSON() {
-  const blob = new Blob([JSON.stringify(tasks, null, 2)], {type: 'application/json'});
+
+function updatePreview() {
+  const def = document.getElementById('definition').value,
+      ans = document.getElementById('answer').value,
+      img = document.getElementById('imgurl').value,
+      bgcolor = document.getElementById('bgcolor').value;
+
+  const gameHTML = genGameHTML(def, ans, img, bgcolor);
+  const blob = new Blob([gameHTML], {type: 'text/html'});
   const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'dictation_tasks.json';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
+
+  document.getElementById('gameframe').src = url;
+  document.getElementById('iframecode').value = `<iframe src="${url}" width="400" height="200" frameborder="0"></iframe>`;
 }
-function loadJSON(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    try {
-      tasks = JSON.parse(e.target.result);
-      renderTasks();
-    } catch (err) {
-      alert('Ошибка! Invalid json!');
-    }
-  }
-  reader.readAsText(file);
-}
-setLang(lang);
+
+updatePreview();
 </script>
 </body>
 </html>
