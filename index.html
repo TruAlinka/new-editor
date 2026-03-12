@@ -2,90 +2,77 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>Настройка интерактивного задания</title>
+  <title>Редактор интерактивного диктанта</title>
   <style>
-    body { font-family: Arial; display:flex; flex-direction:column; align-items:center; background:#f5f7fa; }
-    #wrapper { background:#fff; border-radius:12px; margin:40px 0 0 0; box-shadow:0 6px 32px #aac5fa44; padding:25px; width:500px; }
-    #editor label { font-weight:600; display:block; margin-top:15px; }
-    #editor input, #editor textarea { width:100%; padding:7px; border:1px solid #c9d4ed; border-radius:7px; }
-    #previewbox { background: #eff4fc; padding:14px 10px; margin:new 20px 0 0 0; border-radius:7px;}
-    iframe { width:100%; height:230px; border:2px solid #8caae6; border-radius:8px; background:#fff;}
-    #iframecode { width:100%; background:#f0f3fc; color:#3a2d7d; border:none; padding:6px; font-family:monospace; }
+    body { font-family: Arial, sans-serif; max-width: 550px; margin:20px auto; background:#f9fbff;}
+    .input {margin-top:12px;}
+    textarea,input,select {width:100%; padding:7px; border:1px solid #adc5ea; border-radius:6px;}
+    .task {border-radius:9px;background:#eef3fc; margin:6px 0 2px 0; padding:7px;}
+    .actions{margin-top:7px;}
+    button {background:#4978db;color:#fff; border:none; border-radius:7px; padding:6px 16px; margin:0 7px 0 0;}
+    .mini {font-size:14px;color:#8ca9d1;}
+    #output {margin:20px 0; font-family:monospace;}
+    #tasks {margin:17px 0;}
   </style>
 </head>
 <body>
-<div id="wrapper">
-  <h2>Редактор интерактивного диктанта</h2>
-  <form id="editor" oninput="updatePreview()">
-    <label>Дефиниция:<br>
-      <textarea id="definition" rows="2" required placeholder="Напишите определение..."></textarea>
-    </label>
-    <label>Ответ (слово):<br>
-      <input type="text" id="answer" required placeholder="Ответ">
-    </label>
-    <label>Фото (опционально):<br>
-      <input type="text" id="imgurl" placeholder="URL-картинки, можно пусто">
-    </label>
-    <label>Внешний вид (фон):<br>
-      <input type="color" id="bgcolor" value="#f7faff">
-    </label>
-  </form>
-  <div id="previewbox">
-    <b>Превью задания:</b>
-    <iframe id="gameframe"></iframe>
+  <h2>Редактор заданий для диктанта</h2>
+  <div class="input"><b>Дефиниция</b> <textarea id="def"></textarea></div>
+  <div class="input"><b>Ответ</b> <input id="ans" type="text"></div>
+  <div class="input"><b>Фото (опционально, url)</b> <input id="img" type="text"></div>
+  <div class="input"><b>Тип задания</b>
+    <select id="type">
+      <option value="input">Вводить текст</option>
+      <option value="order">Расставить буквы</option>
+    </select>
   </div>
-  <label style="margin-top:16px;">Код для вставки в Genially (iframe):
-    <input id="iframecode" readonly>
-  </label>
-</div>
+  <div class="actions">
+    <button onclick="addTask()">Добавить задание</button>
+  </div>
+  <div id="tasks"></div>
+  <div class="mini">Добавь все задания, а затем получи ссылку и код для вставки на другой слайд.</div>
+  <button onclick="generateGame()" style="margin-top:10px;">Сгенерировать iframe</button>
+  <div id="output"></div>
+  <script>
+    let tasks = [];
+    function renderTasks() {
+      tasks.length ?
+        document.getElementById('tasks').innerHTML =
+         tasks.map((t,i)=>`<div class="task">${i+1}. ${t.def} <span class="mini">[${t.ans}]</span>
+         <button onclick="delTask(${i})">✗</button></div>`).join('')
+      : document.getElementById('tasks').innerHTML = '<div class="mini">Заданий пока нет</div>';
+    }
+    function addTask() {
+      const def = document.getElementById('def').value.trim();
+      const ans = document.getElementById('ans').value.trim();
+      const img = document.getElementById('img').value.trim();
+      const type = document.getElementById('type').value;
+      if(!def || !ans) return alert('Заполни все обязательные поля!');
+      tasks.push({def, ans, img, type});
+      document.getElementById('def').value = '';
+      document.getElementById('ans').value = '';
+      document.getElementById('img').value = '';
+      renderTasks();
+    }
+    function delTask(i) { tasks.splice(i,1);renderTasks(); }
 
-<script>
-function escapeHTML(s) {
-  return s.replace(/[<>"']/g, ch => ({
-    '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
-  })[ch]);
-}
-
-function genGameHTML(def, ans, img, bgcolor) {
-  return `
-  <html><body style="margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;background:${bgcolor};">
-    ${img ? `<img src="${escapeHTML(img)}" style="max-width:95px;max-height:85px;border-radius:7px;box-shadow:0 3px 9px #0001">` : ''}
-    <div style="margin:10px 0; font-size:20px; color:#26377e">${escapeHTML(def)}</div>
-    <div id="letters"></div>
-    <input id="userin" type="text" autocomplete="off" minlength="1" maxlength="18" style="font-size:18px;padding:4px;width:110px;border-radius:7px; border:1px solid #b3daf6;">
-    <button onclick="check()"
-      style="font-size:15px;padding:4px 8px;margin-left:6px;background:#4ed8b1;color:#26377e;border:none;border-radius:5px;">Проверить</button>
-    <div id="feedback" style="font-size:17px; margin:12px 0 0 0;"></div>
-    <script>
-      const ans = "${escapeHTML(ans)}".trim();
-      function check() {
-        var userin = document.getElementById('userin').value.trim();
-        if (userin.toLowerCase() === ans.toLowerCase()) {
-          document.getElementById('feedback').innerHTML = "✅ Молодец!";
-        } else {
-          document.getElementById('feedback').innerHTML = "";
-        }
-      }
-    <\/script>
-  </body></html>
-  `;
-}
-
-function updatePreview() {
-  const def = document.getElementById('definition').value,
-      ans = document.getElementById('answer').value,
-      img = document.getElementById('imgurl').value,
-      bgcolor = document.getElementById('bgcolor').value;
-
-  const gameHTML = genGameHTML(def, ans, img, bgcolor);
-  const blob = new Blob([gameHTML], {type: 'text/html'});
-  const url = URL.createObjectURL(blob);
-
-  document.getElementById('gameframe').src = url;
-  document.getElementById('iframecode').value = `<iframe src="${url}" width="400" height="200" frameborder="0"></iframe>`;
-}
-
-updatePreview();
-</script>
+    function encodeData(tasks){
+      // Преобразуем в компактную строку
+      return btoa(unescape(encodeURIComponent(JSON.stringify(tasks))));
+    }
+    function generateGame() {
+      if (!tasks.length) return alert('Добавь задания!');
+      // исправь ссылку ниже на свою при публикации!
+      let base = "https://твойдомен/game.html";
+      let data = encodeData(tasks);
+      let url = `${base}?data=${data}`;
+      let iframe = `<iframe src="${url}" width="460" height="350" style="border:0;border-radius:10px;overflow:hidden;"></iframe>`;
+      document.getElementById('output').innerHTML =
+        `<b>Ссылка для Genially:</b> <input style="width:96%;" value="${url}" onclick="this.select()"><br><br>
+        <b>Iframe-код:</b> <input style="width:95%;" value='${iframe}' onclick="this.select()'><br><br>
+        <span class="mini">Скопируй код, вставь на нужный слайд Genially как "встраиваемый элемент".</span>`;
+    }
+    renderTasks();
+  </script>
 </body>
 </html>
