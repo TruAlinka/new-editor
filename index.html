@@ -2,77 +2,201 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>Редактор интерактивного диктанта</title>
+  <title>Интерактивный диктант — редактор и игра</title>
+  <meta name="viewport" content="width=400,initial-scale=1">
   <style>
-    body { font-family: Arial, sans-serif; max-width: 550px; margin:20px auto; background:#f9fbff;}
-    .input {margin-top:12px;}
+    body { font-family: Arial, sans-serif; background:#f6f8fd; min-height:100vh; }
+    #main { background:#fff; border-radius:11px; max-width:540px; margin:26px auto 0 auto; box-shadow:0 8px 34px #aac5fa23; padding:22px; }
+    .input {margin-top:10px;}
     textarea,input,select {width:100%; padding:7px; border:1px solid #adc5ea; border-radius:6px;}
-    .task {border-radius:9px;background:#eef3fc; margin:6px 0 2px 0; padding:7px;}
-    .actions{margin-top:7px;}
-    button {background:#4978db;color:#fff; border:none; border-radius:7px; padding:6px 16px; margin:0 7px 0 0;}
-    .mini {font-size:14px;color:#8ca9d1;}
-    #output {margin:20px 0; font-family:monospace;}
-    #tasks {margin:17px 0;}
+    .task {border-radius:10px;background:#eef3fc; margin:7px 0 2px 0; padding:7px; display:flex;justify-content:space-between;align-items:center;}
+    .actions button{margin-left:8px;}
+    button {background:#4978db;color:#fff; border:none; border-radius:7px; padding:7px 16px; cursor:pointer;}
+    .mini {font-size:13px;color:#8ca9d1;}
+    #output {margin:22px 0 6px 0; font-family:monospace;}
+    .curr {background:#f4f7ff;border-radius:9px;box-shadow:0 2px 8px #386bb319; padding: 15px;}
+    .nav {margin-top:15px;}
+    #tasks {margin:16px 0;}
+    .progress-dot {font-size:22px;vertical-align:middle;margin-right:4px;}
+    @media (max-width:600px) {#main{max-width:99vw;padding:7px;}}
   </style>
 </head>
 <body>
-  <h2>Редактор заданий для диктанта</h2>
-  <div class="input"><b>Дефиниция</b> <textarea id="def"></textarea></div>
-  <div class="input"><b>Ответ</b> <input id="ans" type="text"></div>
-  <div class="input"><b>Фото (опционально, url)</b> <input id="img" type="text"></div>
-  <div class="input"><b>Тип задания</b>
-    <select id="type">
-      <option value="input">Вводить текст</option>
-      <option value="order">Расставить буквы</option>
-    </select>
-  </div>
-  <div class="actions">
-    <button onclick="addTask()">Добавить задание</button>
-  </div>
-  <div id="tasks"></div>
-  <div class="mini">Добавь все задания, а затем получи ссылку и код для вставки на другой слайд.</div>
-  <button onclick="generateGame()" style="margin-top:10px;">Сгенерировать iframe</button>
-  <div id="output"></div>
+  <div id="main"></div>
   <script>
-    let tasks = [];
-    function renderTasks() {
-      tasks.length ?
-        document.getElementById('tasks').innerHTML =
-         tasks.map((t,i)=>`<div class="task">${i+1}. ${t.def} <span class="mini">[${t.ans}]</span>
-         <button onclick="delTask(${i})">✗</button></div>`).join('')
-      : document.getElementById('tasks').innerHTML = '<div class="mini">Заданий пока нет</div>';
-    }
-    function addTask() {
-      const def = document.getElementById('def').value.trim();
-      const ans = document.getElementById('ans').value.trim();
-      const img = document.getElementById('img').value.trim();
-      const type = document.getElementById('type').value;
-      if(!def || !ans) return alert('Заполни все обязательные поля!');
-      tasks.push({def, ans, img, type});
-      document.getElementById('def').value = '';
-      document.getElementById('ans').value = '';
-      document.getElementById('img').value = '';
-      renderTasks();
-    }
-    function delTask(i) { tasks.splice(i,1);renderTasks(); }
-
+    // --- Утилиты для кодирования заданий в ссылку ---
     function encodeData(tasks){
-      // Преобразуем в компактную строку
       return btoa(unescape(encodeURIComponent(JSON.stringify(tasks))));
     }
-    function generateGame() {
-      if (!tasks.length) return alert('Добавь задания!');
-      // исправь ссылку ниже на свою при публикации!
-      let base = "https://твойдомен/game.html";
-      let data = encodeData(tasks);
-      let url = `${base}?data=${data}`;
-      let iframe = `<iframe src="${url}" width="460" height="350" style="border:0;border-radius:10px;overflow:hidden;"></iframe>`;
-      document.getElementById('output').innerHTML =
-        `<b>Ссылка для Genially:</b> <input style="width:96%;" value="${url}" onclick="this.select()"><br><br>
-        <b>Iframe-код:</b> <input style="width:95%;" value='${iframe}' onclick="this.select()'><br><br>
-        <span class="mini">Скопируй код, вставь на нужный слайд Genially как "встраиваемый элемент".</span>`;
+    function decodeData(str) {
+      try { return JSON.parse(decodeURIComponent(escape(atob(str)))); }
+      catch(e){ return null; }
     }
+    function getParam(name) {
+      let m = location.search.match(new RegExp('[?&]'+name+'=([^&]*)'));
+      return m ? decodeURIComponent(m[1]) : null;
+    }
+    // --- Игровой режим ---
+    function runGame(tasks) {
+      document.title = "Интерактивный диктант — Игра";
+      let main = document.getElementById('main');
+      let i = 0, corrects = [], shuffledLetters = [];
+      function renderGame() {
+        if (!tasks.length) return main.innerHTML = "<b>Нет заданий.</b>";
+        let t = tasks[i];
+        main.innerHTML = 
+          `<div class=curr>
+            <div style='font-size:20px;margin-bottom:7px;color:#264bad;'>${t.def}</div>
+            ${t.img ? `<img src="${t.img}" style="max-width:100px;max-height:70px;border-radius:7px;box-shadow:0 3px 9px #0001"><br>`:""}
+            ${t.type=="input" ?
+              `<input id="input" type="text" style="font-size:19px;width:170px;border-radius:5px;">
+              <button onclick="check()">Проверить</button>` :
+              `<div id="letters" style="margin:7px 0 13px 0;"></div>
+               <button onclick="check_letter()">Проверить</button>`
+            }
+            <div id="fdb" style="font-size:17px; margin:12px 0 0 0;"></div>
+          </div>
+          <div class="nav">
+            <button onclick="prev()" ${i==0?"disabled":""}>◀</button>
+            <span class="mini">Задание ${i+1} из ${tasks.length}</span>
+            <button onclick="next()" ${i==tasks.length-1?"disabled":""}>▶</button>
+            <button onclick="showProgress()" style="float:right;">Шкала</button>
+          </div>`;
+        if (t.type=="order") showLetters();
+        setTimeout(()=>{let ii=document.getElementById(t.type=="order"?"letters":"input");if(ii)ii.focus();},120);
+        if (corrects[i]) document.getElementById('fdb').innerHTML="✅ Верно";
+      }
+      function check() {
+        let val = document.getElementById("input").value.trim();
+        if (val.toLowerCase() === tasks[i].ans.toLowerCase()) {
+          corrects[i] = true;
+          document.getElementById("fdb").innerHTML = "✅ Молодец!";
+        } else {
+          document.getElementById("fdb").innerHTML = "";
+        }
+      }
+      function showLetters() {
+        let ans = tasks[i].ans;
+        if (!shuffledLetters[i]) {
+          let arr = ans.split('');
+          for (let k = arr.length-1; k>0; k--) {let l = Math.floor(Math.random()*(k+1)); [arr[k], arr[l]]=[arr[l], arr[k]];}
+          shuffledLetters[i] = arr;
+        }
+        let arr = shuffledLetters[i];
+        let ch_html = arr.map((ch,idx)=>`<button style="font-size:21px;margin:2px;padding:6px;border-radius:6px;border:1px solid #c0caf9;" onclick="addL(${idx})" id="l${idx}">${ch}</button>`).join("");
+        document.getElementById("letters").innerHTML =
+          ch_html +
+          `<div style="margin:8px 0;"><input id="ordered" value="" style="font-size:17px;letter-spacing:3px;width:110px;" readonly></div>`;
+        window.letters = arr; window.order = [];
+      }
+      window.addL = function(idx){
+        document.getElementById("ordered").value += window.letters[idx];
+        document.getElementById("l"+idx).style.visibility="hidden";
+        window.order.push(window.letters[idx]);
+      }
+      window.check_letter = function(){
+        let val = document.getElementById("ordered").value;
+        if (val.toLowerCase() === tasks[i].ans.toLowerCase()) {
+          corrects[i]=true; document.getElementById("fdb").innerHTML = "✅ Отлично!";
+        } else { document.getElementById("fdb").innerHTML=""; }
+      }
+      window.prev = function(){if(i>0)i--;renderGame();}
+      window.next = function(){if(i<tasks.length-1)i++;renderGame();}
+      window.showProgress = function(){
+        main.innerHTML = `<b>Верных решений: ${(corrects.filter(Boolean).length)} из ${tasks.length}</b>
+          <div style="margin:13px 0;">
+          <button onclick="renderGame()">Назад</button></div>
+          <div>${tasks.map((t,idx)=>
+            corrects[idx]?`<span style="color:green;" class="progress-dot">●</span>`:
+            `<span style="color:#bbb;" class="progress-dot">○</span>`).join(' ')}</div>`;
+      }
+      renderGame();
+    }
+
+    runGame = undefined; // Блокируем возврат в редактор
+    window.check = check;
+    window.prev = window.prev;
+    window.next = window.next;
+    window.check_letter = window.check_letter;
+    window.showProgress = window.showProgress;
+
+    renderGame();
+  }
+
+  // --- Редактор заданий ---
+  function runEditor() {
+    document.title = "Редактор интерактивного диктанта";
+    let main = document.getElementById('main');
+    let tasks = [];
+    function renderTasks() {
+      main.querySelector('#tasks').innerHTML = tasks.length ?
+         tasks.map((t,i)=>
+            `<div class="task">
+              <span>${i+1}. ${t.def} <span class="mini">${t.img?"🖼️":""} [${t.ans}]</span></span>
+              <span class="actions">
+                <button onclick="delTask(${i})">✗</button>
+              </span>
+            </div>`
+          ).join('')
+        : `<div class="mini">Заданий пока нет</div>`;
+    }
+    function addTask() {
+      const def = main.querySelector('#def').value.trim();
+      const ans = main.querySelector('#ans').value.trim();
+      const img = main.querySelector('#img').value.trim();
+      const type = main.querySelector('#type').value;
+      if(!def || !ans) return alert('Заполни все обязательные поля!');
+      tasks.push({def, ans, img, type});
+      main.querySelector('#def').value = '';
+      main.querySelector('#ans').value = '';
+      main.querySelector('#img').value = '';
+      renderTasks();
+    }
+    window.delTask = function(i) { tasks.splice(i,1); renderTasks(); }
+    window.addTask = addTask;
+
+    function makeOutput() {
+      if (!tasks.length) return alert('Добавь задания!');
+      let self = window.location.origin + window.location.pathname;
+      let data = encodeData(tasks);
+      let url = `${self}?data=${data}`;
+      let iframe = `<iframe src="${url}" width="460" height="350" style="border:0;border-radius:10px;overflow:hidden;"></iframe>`;
+      main.querySelector('#output').innerHTML =
+        `<div><b>Ссылка для Genially:</b> <input style="width:93%;" value="${url}" onclick="this.select()"></div>
+         <div style="margin:10px 0 5px 0;"><b>Код для вставки (iframe):</b>
+           <input style="width:96%;" value='${iframe}' onclick="this.select()'></div>
+         <div class="mini">Вставь на другой слайд Genially как "встраиваемый элемент".</div>`;
+    }
+    main.innerHTML = `
+      <h2>Редактор заданий для диктанта</h2>
+      <div class="input"><b>Дефиниция</b> <textarea id="def"></textarea></div>
+      <div class="input"><b>Ответ</b> <input id="ans" type="text"></div>
+      <div class="input"><b>Фото (опционально, url)</b> <input id="img" type="text"></div>
+      <div class="input"><b>Тип задания</b>
+        <select id="type">
+          <option value="input">Вводить текст</option>
+          <option value="order">Расставить буквы</option>
+        </select>
+      </div>
+      <div style="margin:9px 0;">
+        <button onclick="addTask()">Добавить в список</button>
+      </div>
+      <div id="tasks"></div>
+      <div class="mini">Добавь все задания, а затем получи ссылку или iframe для вставки на другой слайд.</div>
+      <button onclick="makeOutput()" style="margin-top:14px;">Сгенерировать игру</button>
+      <div id="output"></div>
+      `;
     renderTasks();
+  }
+
+  // --- Запуск ---
+  let data = getParam("data");
+  if (data) {
+    let tasks = decodeData(data);
+    runGame(tasks || []);
+  } else {
+    runEditor();
+  }
   </script>
 </body>
 </html>
