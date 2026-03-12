@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Редактор для Интерактивного диктанта</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; }
+    input, button, select, textarea { margin: 5px 0; width: 100%; }
+    .task { border: 1px solid #eee; padding: 10px; border-radius: 4px; margin-top: 10px; }
+    .task-header { display: flex; justify-content: space-between; }
+    .task-index { font-weight: bold; }
+    .task-actions { text-align: right; margin-top:5px; }
+  </style>
+</head>
+<body>
+  <h2>Редактор заданий</h2>
+  <form id="taskForm">
+    <label>Ссылка на картинку: <input type="text" id="img" required></label><br>
+    <label>Дефиниция (опционально): <textarea id="def"></textarea></label><br>
+    <label>Слово-ответ: <input type="text" id="answer" required></label><br>
+    <label>Тип задания:
+      <select id="type">
+        <option value="order">Расставить буквы</option>
+        <option value="input">Впечатать слово</option>
+      </select>
+    </label><br>
+    <button type="submit">Добавить задание</button>
+    <button type="button" onclick="clearForm()">Очистить форму</button>
+  </form>
+  <hr>
+  <h3>Текущие задания:</h3>
+  <div id="tasks"></div>
+  <button onclick="downloadJSON()">Выгрузить задания</button>
+  <input type="file" id="fileInput" accept="application/json" onchange="loadJSON(event)" style="margin-top: 5px;">
+  <script>
+    let tasks = [];
+    let editingIndex = null;
+
+    function renderTasks() {
+      const tasksDiv = document.getElementById('tasks');
+      tasksDiv.innerHTML = '';
+      tasks.forEach((t, i) => {
+        tasksDiv.innerHTML += `
+          <div class="task">
+            <div class="task-header"><span class="task-index">#${i+1}</span> ${t.img ? `<img src="${t.img}" width="40" style="vertical-align:middle;">` : ''}</div>
+            <div>Дефиниция: ${t.def || '<em>нет</em>'}</div>
+            <div>Ответ: <b>${t.answer}</b> (${t.type === 'order' ? 'буквы по порядку' : 'ручной ввод'})</div>
+            <div class="task-actions">
+              <button onclick="editTask(${i})">✏️ Редактировать</button>
+              <button onclick="deleteTask(${i})">🗑️ Удалить</button>
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    function clearForm() {
+      document.getElementById('taskForm').reset();
+      editingIndex = null;
+    }
+
+    document.getElementById('taskForm').onsubmit = function(e) {
+      e.preventDefault();
+      const img = document.getElementById('img').value.trim();
+      const def = document.getElementById('def').value.trim();
+      const answer = document.getElementById('answer').value.trim();
+      const type = document.getElementById('type').value;
+      const task = { img, def, answer, type };
+      if (editingIndex !== null) {
+        tasks[editingIndex] = task;
+        editingIndex = null;
+      } else {
+        tasks.push(task);
+      }
+      this.reset();
+      renderTasks();
+    }
+
+    window.editTask = function(i) {
+      const t = tasks[i];
+      document.getElementById('img').value = t.img;
+      document.getElementById('def').value = t.def;
+      document.getElementById('answer').value = t.answer;
+      document.getElementById('type').value = t.type;
+      editingIndex = i;
+    }
+
+    window.deleteTask = function(i) {
+      if (confirm('Удалить задание?')) {
+        tasks.splice(i, 1);
+        renderTasks();
+      }
+    }
+
+    function downloadJSON() {
+      const blob = new Blob([JSON.stringify(tasks, null, 2)], {type: 'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'dictation_tasks.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+
+    function loadJSON(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          tasks = JSON.parse(e.target.result);
+          renderTasks();
+        } catch (err) {
+          alert('Ошибка при загрузке json!');
+        }
+      }
+      reader.readAsText(file);
+    }
+  </script>
+</body>
+</html>
